@@ -2,7 +2,7 @@ import { addonBuilder } from 'stremio-addon-sdk';
 import { Type } from './lib/types.js';
 import { dummyManifest } from './lib/manifest.js';
 import { toStreamInfo, applyStaticInfo } from './lib/streamInfo.js';
-import * as dmm from './lib/dmm.js'; // Zmiana: Import nowego modułu
+import * as dmm from './lib/dmm.js';
 import applySorting from './lib/sort.js';
 import applyFilters from './lib/filter.js';
 import { applyMochs, getMochCatalog, getMochItemMeta } from './moch/moch.js';
@@ -27,7 +27,6 @@ builder.defineStreamHandler((args) => {
 
   console.log(`[ADDON DEBUG] Rozpoczynam przetwarzanie dla ID: ${args.id}`);
 
-  // Zmiana: Użycie dmm.js do pobierania strumieni
   return requestQueue.wrap(args.id, () => dmm.getStreams(args.id, args.type))
       .then(streams => {
         console.log(`[ADDON DEBUG] Pobrane strumienie z DMM: ${streams.length}`);
@@ -57,7 +56,6 @@ builder.defineStreamHandler((args) => {
         return Promise.reject(`Failed request ${args.id}: ${error}`);
       });
 });
-
 
 builder.defineCatalogHandler((args) => {
   const [_, mochKey, catalogId] = args.id.split('-');
