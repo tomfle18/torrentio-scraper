@@ -1,6 +1,7 @@
 import axios from 'axios';
 import crypto from 'crypto';
 import { toStreamInfo } from './streamInfo.js';
+import { getRandomUserAgent } from './requestHelper.js'; // <-- Dodany import
 
 const SALT = 'debridmediamanager.com%%fe7#td00rA3vHz%VmI';
 const REGEX_PATTERN = /(\b(adl|agusiq|al3x|ale13|alusia|as76|azjatycki|azq|b89|bida|chrisvps|d11|denda|dsite|elladajarek|emis|enter1973|esperanza|eteam|feld|fiona9|gamer158|ghn|gr4pe|h3q|hmdb|intgrity|j60|joanna668|k83|kit|kolekcja|komplet|kpfr|ksq|lektor|ltn|m80|marcin0313|maxim|mg|mixio|mowy|napiproject|napisy|napisypl|nn|nonano|noq|ozw|p2p|paczka|pl|pl_1080p_web|pldub|plsub|pol|polish|psig|r22|r68|ralf|robsil|rx|s56|sezon|sfpi|sharpe|sk13|spajk85|spedboy|starlord|starlordx|superseed|syntezator|syrix|tfsh|tłumacz|toalien|topfilmyfilmweb|torrentmaniak|vantablack|wasik|wilu75|wersja|xupload|zbyszek|electro-torrent|devil-torrents|polskie-torrenty|cool-torents|ex-torrenty)\b)|(ą|ć|ę|ł|ń|ś|ź|ż)/i;
@@ -81,6 +82,7 @@ async function fetchAllPages(imdbId, problemKey, solution, contentType, seasonNu
     const baseUrl = `https://debridmediamanager.com/api/torrents/${contentType}`;
     let pageCounter = 0;
     const allResults = [];
+    const headers = { 'User-Agent': getRandomUserAgent() }; // <-- Dodany nagłówek
 
     console.log(`[DMM DEBUG] Rozpoczynam pobieranie stron dla IMDB ID: ${imdbId}, Typ: ${contentType}, Sezon: ${seasonNum}`);
 
@@ -99,7 +101,8 @@ async function fetchAllPages(imdbId, problemKey, solution, contentType, seasonNu
 
         try {
             console.log(`[DMM DEBUG] Pobieranie strony ${pageCounter}...`);
-            const response = await axios.get(baseUrl, { params: params, timeout: 20000 });
+            // <-- Dodane `headers` do zapytania
+            const response = await axios.get(baseUrl, { params: params, headers: headers, timeout: 20000 }); 
             const currentResults = response.data.results || [];
             if (!currentResults.length) {
                 console.log(`[DMM DEBUG] Strona ${pageCounter} jest pusta. Zakończono pobieranie.`);
@@ -160,34 +163,23 @@ export async function getStreams(id, type) {
             return [];
         }
 
-        console.log('[DMM DEBUG] Przykładowy unikalny wynik z DMM:', JSON.stringify(uniqueResults[0], null, 2));
-        
         const streams = uniqueResults.map(item => {
-            const streamInfo = {
+            return toStreamInfo({
                 infoHash: item.hash,
-                fileIndex: null, // DMM API nie dostarcza fileIndex
+                fileIndex: null,
                 title: item.title,
                 size: item.size,
                 torrent: {
                     title: item.title,
                     seeders: item.seeders,
                     provider: 'DMM',
-                    trackers: '', // DMM API nie dostarcza trackerów
-                    uploadDate: new Date() // Ustawienie aktualnej daty
+                    trackers: '',
+                    uploadDate: new Date()
                 }
-            };
-            // Logowanie przed konwersją
-            // console.log('[DMM DEBUG] Dane wejściowe dla toStreamInfo:', JSON.stringify(streamInfo, null, 2));
-            const convertedStream = toStreamInfo(streamInfo);
-            // Logowanie po konwersji
-            // console.log('[DMM DEBUG] Wynik z toStreamInfo:', JSON.stringify(convertedStream, null, 2));
-            return convertedStream;
+            });
         });
 
         console.log(`[DMM DEBUG] Zwracam ${streams.length} strumieni do Stremio.`);
-        if (streams.length > 0) {
-            console.log('[DMM DEBUG] Przykładowy przekonwertowany strumień:', JSON.stringify(streams[0], null, 2));
-        }
         return streams;
     } catch (error) {
         console.error(`[DMM DEBUG] Wystąpił krytyczny błąd w getStreams: ${error.message}`);
