@@ -161,7 +161,7 @@ export async function getStreams(id, type) {
         }
 
         console.log('[DMM DEBUG] Przykładowy unikalny wynik z DMM:', JSON.stringify(uniqueResults[0], null, 2));
-
+        
         const streams = uniqueResults.map(item => {
             const streamInfo = {
                 infoHash: item.hash,
@@ -183,7 +183,7 @@ export async function getStreams(id, type) {
             // console.log('[DMM DEBUG] Wynik z toStreamInfo:', JSON.stringify(convertedStream, null, 2));
             return convertedStream;
         });
-        
+
         console.log(`[DMM DEBUG] Zwracam ${streams.length} strumieni do Stremio.`);
         if (streams.length > 0) {
             console.log('[DMM DEBUG] Przykładowy przekonwertowany strumień:', JSON.stringify(streams[0], null, 2));
