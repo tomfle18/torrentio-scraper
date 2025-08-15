@@ -1,8 +1,13 @@
 import { extractProvider, parseSize, extractSize } from './titleHelper.js';
 import { Type } from './types.js';
+
 export const Providers = {
   key: 'providers',
   options: [
+    {
+      key: 'dmm',
+      label: 'DMM'
+    },
     {
       key: 'yts',
       label: 'YTS'
