@@ -63,17 +63,9 @@ function noopSort(streams) {
 
 function sortBySeeders(streams, config, type) {
   // streams are already presorted by seeders and upload date
-  const healthy = streams.filter(stream => extractSeeders(stream.title) >= HEALTHY_SEEDERS);
-  const seeded = streams.filter(stream => extractSeeders(stream.title) >= SEEDED_SEEDERS);
-
-  if (type === Type.SERIES && hasMochConfigured(config)) {
-    return streams;
-  } else if (healthy.length >= MIN_HEALTHY_COUNT) {
-    return healthy;
-  } else if (seeded.length >= MAX_UNHEALTHY_COUNT) {
-    return seeded.slice(0, MIN_HEALTHY_COUNT);
-  }
-  return streams.slice(0, MAX_UNHEALTHY_COUNT);
+  // The original function was filtering results, which is not desired.
+  // Returning the streams as-is to prevent filtering.
+  return streams;
 }
 
 function sortBySize(streams, limit) {
