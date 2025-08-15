@@ -222,8 +222,6 @@ export default function landingTemplate(manifest, config = {}) {
   const debridOptionsHTML = Object.values(DebridOptions.options)
       .map(option => `<option value="${option.key}">${option.description}</option>`)
       .join('\n');
-  const stylizedTypes = manifest.types
-      .map(t => t[0].toUpperCase() + t.slice(1) + (t !== 'series' ? 's' : ''));
   const preConfigurationObject = Object.entries(PreConfigurations)
       .map(([key, config]) => `${key}: '${config.serialized}'`)
       .join(',');
@@ -254,13 +252,6 @@ export default function landingTemplate(manifest, config = {}) {
          <h1 class="name">${manifest.name}</h1>
          <h2 class="version">${manifest.version || '0.0.0'}</h2>
          <h2 class="description">${manifest.description || ''}</h2>
-
-         <div class="separator"></div>
-
-         <h3 class="gives">This addon has more :</h3>
-         <ul>
-            ${stylizedTypes.map(t => `<li>${t}</li>`).join('')}
-         </ul>
 
          <div class="separator"></div>
          
