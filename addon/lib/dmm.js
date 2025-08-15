@@ -160,23 +160,34 @@ export async function getStreams(id, type) {
             return [];
         }
 
+        console.log('[DMM DEBUG] Przykładowy unikalny wynik z DMM:', JSON.stringify(uniqueResults[0], null, 2));
+
         const streams = uniqueResults.map(item => {
-            return toStreamInfo({
+            const streamInfo = {
                 infoHash: item.hash,
-                fileIndex: null,
+                fileIndex: null, // DMM API nie dostarcza fileIndex
                 title: item.title,
                 size: item.size,
                 torrent: {
                     title: item.title,
                     seeders: item.seeders,
                     provider: 'DMM',
-                    trackers: '',
-                    uploadDate: new Date()
+                    trackers: '', // DMM API nie dostarcza trackerów
+                    uploadDate: new Date() // Ustawienie aktualnej daty
                 }
-            });
+            };
+            // Logowanie przed konwersją
+            // console.log('[DMM DEBUG] Dane wejściowe dla toStreamInfo:', JSON.stringify(streamInfo, null, 2));
+            const convertedStream = toStreamInfo(streamInfo);
+            // Logowanie po konwersji
+            // console.log('[DMM DEBUG] Wynik z toStreamInfo:', JSON.stringify(convertedStream, null, 2));
+            return convertedStream;
         });
-
+        
         console.log(`[DMM DEBUG] Zwracam ${streams.length} strumieni do Stremio.`);
+        if (streams.length > 0) {
+            console.log('[DMM DEBUG] Przykładowy przekonwertowany strumień:', JSON.stringify(streams[0], null, 2));
+        }
         return streams;
     } catch (error) {
         console.error(`[DMM DEBUG] Wystąpił krytyczny błąd w getStreams: ${error.message}`);
