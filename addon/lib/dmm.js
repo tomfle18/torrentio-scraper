@@ -4,7 +4,6 @@ import { toStreamInfo } from './streamInfo.js';
 
 const SALT = 'debridmediamanager.com%%fe7#td00rA3vHz%VmI';
 const REGEX_PATTERN = /(\b(adl|agusiq|al3x|ale13|alusia|as76|azjatycki|azq|b89|bida|chrisvps|d11|denda|dsite|elladajarek|emis|enter1973|esperanza|eteam|feld|fiona9|gamer158|ghn|gr4pe|h3q|hmdb|intgrity|j60|joanna668|k83|kit|kolekcja|komplet|kpfr|ksq|lektor|ltn|m80|marcin0313|maxim|mg|mixio|mowy|napiproject|napisy|napisypl|nn|nonano|noq|ozw|p2p|paczka|pl|pl_1080p_web|pldub|plsub|pol|polish|psig|r22|r68|ralf|robsil|rx|s56|sezon|sfpi|sharpe|sk13|spajk85|spedboy|starlord|starlordx|superseed|syntezator|syrix|tfsh|tłumacz|toalien|topfilmyfilmweb|torrentmaniak|vantablack|wasik|wilu75|wersja|xupload|zbyszek|electro-torrent|devil-torrents|polskie-torrenty|cool-torents|ex-torrenty)\b)|(ą|ć|ę|ł|ń|ś|ź|ż)/i;
-const MAGNET_PREFIX = "magnet:?xt=urn:btih:";
 
 function toSigned32(n) {
     return n | 0;
@@ -24,7 +23,7 @@ async function fetchTimestamp() {
         const isoTimeStr = response.data;
         return Math.floor(new Date(isoTimeStr).getTime() / 1000);
     } catch (e) {
-        console.error(`Błąd podczas pobierania znacznika czasu: ${e}`);
+        console.error(`[DMM DEBUG] Błąd podczas pobierania znacznika czasu: ${e.message}`);
         throw e;
     }
 }
@@ -74,6 +73,7 @@ async function generateTokenAndHash() {
     const tokenTimestampHash = generateHash(tokenWithTimestamp);
     const tokenSaltHash = generateHash(`${SALT}-${token}`);
     const combinedHash = combineHashes(tokenTimestampHash, tokenSaltHash);
+    console.log(`[DMM DEBUG] Wygenerowany klucz: ${tokenWithTimestamp}, Rozwiązanie: ${combinedHash}`);
     return { problemKey: tokenWithTimestamp, solution: combinedHash };
 }
 
@@ -81,6 +81,8 @@ async function fetchAllPages(imdbId, problemKey, solution, contentType, seasonNu
     const baseUrl = `https://debridmediamanager.com/api/torrents/${contentType}`;
     let pageCounter = 0;
     const allResults = [];
+
+    console.log(`[DMM DEBUG] Rozpoczynam pobieranie stron dla IMDB ID: ${imdbId}, Typ: ${contentType}, Sezon: ${seasonNum}`);
 
     while (true) {
         const params = {
@@ -96,15 +98,18 @@ async function fetchAllPages(imdbId, problemKey, solution, contentType, seasonNu
         }
 
         try {
+            console.log(`[DMM DEBUG] Pobieranie strony ${pageCounter}...`);
             const response = await axios.get(baseUrl, { params: params, timeout: 20000 });
             const currentResults = response.data.results || [];
             if (!currentResults.length) {
+                console.log(`[DMM DEBUG] Strona ${pageCounter} jest pusta. Zakończono pobieranie.`);
                 break;
             }
+            console.log(`[DMM DEBUG] Znaleziono ${currentResults.length} wyników na stronie ${pageCounter}.`);
             allResults.push(...currentResults);
             pageCounter++;
         } catch (e) {
-            console.error(`Błąd podczas wysyłania zapytania na stronie ${pageCounter}: ${e}`);
+            console.error(`[DMM DEBUG] Błąd podczas wysyłania zapytania na stronie ${pageCounter}: ${e.message}`);
             break;
         }
     }
@@ -113,7 +118,9 @@ async function fetchAllPages(imdbId, problemKey, solution, contentType, seasonNu
 
 function filterResults(allResults) {
     if (!allResults) return [];
-    return allResults.filter(item => item.title && item.hash && REGEX_PATTERN.test(item.title));
+    const filtered = allResults.filter(item => item.title && item.hash && REGEX_PATTERN.test(item.title));
+    console.log(`[DMM DEBUG] Po filtracji po polsku zostało ${filtered.length} z ${allResults.length} wyników.`);
+    return filtered;
 }
 
 function removeDuplicateHashes(results) {
@@ -126,39 +133,53 @@ function removeDuplicateHashes(results) {
             uniqueResults.push(item);
         }
     }
+    console.log(`[DMM DEBUG] Po usunięciu duplikatów zostało ${uniqueResults.length} unikalnych wyników.`);
     return uniqueResults;
 }
 
 export async function getStreams(id, type) {
-    const { problemKey, solution } = await generateTokenAndHash();
-    const parts = id.split(':');
-    const imdbId = parts[0];
-    let seasonNum = null;
-    let contentType = 'movie';
+    console.log(`\n[DMM DEBUG] Otrzymano zapytanie o strumienie dla ID: ${id}, Typ: ${type}`);
+    try {
+        const { problemKey, solution } = await generateTokenAndHash();
+        const parts = id.split(':');
+        const imdbId = parts[0];
+        let seasonNum = null;
+        let contentType = 'movie';
 
-    if (type === 'series') {
-        contentType = 'tv';
-        seasonNum = parts[1];
-    }
+        if (type === 'series') {
+            contentType = 'tv';
+            seasonNum = parts[1];
+        }
 
-    const allApiResults = await fetchAllPages(imdbId, problemKey, solution, contentType, seasonNum);
-    const filteredResults = filterResults(allApiResults);
-    const uniqueResults = removeDuplicateHashes(filteredResults);
+        const allApiResults = await fetchAllPages(imdbId, problemKey, solution, contentType, seasonNum);
+        const filteredResults = filterResults(allApiResults);
+        const uniqueResults = removeDuplicateHashes(filteredResults);
 
-    // Konwersja do formatu oczekiwanego przez addon
-    return uniqueResults.map(item => {
-        return toStreamInfo({
-            infoHash: item.hash,
-            fileIndex: null, // DMM API nie dostarcza fileIndex, więc ustawiamy null
-            title: item.title,
-            size: item.size,
-            torrent: {
+        if (uniqueResults.length === 0) {
+            console.log("[DMM DEBUG] Nie znaleziono żadnych pasujących wyników. Zwracam pustą listę.");
+            return [];
+        }
+
+        const streams = uniqueResults.map(item => {
+            return toStreamInfo({
+                infoHash: item.hash,
+                fileIndex: null,
                 title: item.title,
-                seeders: item.seeders,
-                provider: 'DMM',
-                trackers: '',
-                uploadDate: new Date()
-            }
+                size: item.size,
+                torrent: {
+                    title: item.title,
+                    seeders: item.seeders,
+                    provider: 'DMM',
+                    trackers: '',
+                    uploadDate: new Date()
+                }
+            });
         });
-    });
+
+        console.log(`[DMM DEBUG] Zwracam ${streams.length} strumieni do Stremio.`);
+        return streams;
+    } catch (error) {
+        console.error(`[DMM DEBUG] Wystąpił krytyczny błąd w getStreams: ${error.message}`);
+        return [];
+    }
 }
