@@ -4,7 +4,6 @@ import { showDebridCatalog } from '../moch/options.js';
 import { getManifestOverride } from './configuration.js';
 import { Type } from './types.js';
 
-const DefaultProviders = Providers.options.map(provider => provider.key);
 const MochProviders = Object.values(MochOptions);
 
 export function manifest(config = {}) {
@@ -43,20 +42,15 @@ function getName(manifest, config) {
   return [rootName, mochSuffix].filter(v => v).join(' ');
 }
 
+// ZMIANA: Uproszczony opis
 function getDescription(config) {
-  const providersList = config[Providers.key] || DefaultProviders;
-  const enabledProvidersDesc = Providers.options
-      .map(provider => `${provider.label}${providersList.includes(provider.key) ? '(+)' : '(-)'}`)
-      .join(', ')
   const enabledMochs = MochProviders
       .filter(moch => config[moch.key])
       .map(moch => moch.name)
       .join(' & ');
-  const possibleMochs = MochProviders.map(moch => moch.name).join('/')
-  const mochsDesc = enabledMochs ? ` and ${enabledMochs} enabled` : '';
-  return 'Provides torrent streams from scraped torrent providers.'
-      + ` Currently supports ${enabledProvidersDesc}${mochsDesc}.`
-      + ` To configure providers, ${possibleMochs} support and other settings visit https://torrentio.strem.fun`
+  const possibleMochs = MochProviders.map(moch => moch.name).join('/');
+  const mochsDesc = enabledMochs ? ` with ${enabledMochs} support` : '';
+  return `Provides torrent streams from the Debrid Media Manager database. To configure Debrid providers (${possibleMochs}) and other settings, use the options below.`
 }
 
 function getCatalogs(config) {
