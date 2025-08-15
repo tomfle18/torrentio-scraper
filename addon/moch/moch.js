@@ -86,7 +86,9 @@ export function hasMochConfigured(config) {
 }
 
 export async function applyMochs(streams, config) {
+  console.log('[ADDON DEBUG] applyMochs config:', JSON.stringify(config, null, 2));
   if (!streams?.length || !hasMochConfigured(config)) {
+    console.log('[ADDON DEBUG] Nie znaleziono konfiguracji Debrid, zwracam oryginalne strumienie.');
     return streams;
   }
   return Promise.all(Object.keys(config)
@@ -178,7 +180,7 @@ function processMochResults(streams, config, results) {
     return resultStreams;
   }, streams);
   const resultStreams = excludeDownloadLinks ? cachedStreams : populateDownloadLinks(cachedStreams, results, config);
-  return resultStreams.filter(stream => stream.url);
+  return resultStreams.filter(stream => stream.url || stream.infoHash);
 }
 
 function populateCachedLinks(streams, mochResult, config) {
