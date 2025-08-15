@@ -3,9 +3,15 @@ const Op = Sequelize.Op;
 
 const DATABASE_URI = process.env.DATABASE_URI;
 
-const database = new Sequelize(DATABASE_URI, { logging: false, pool: { max: 30, min: 5, idle: 20 * 60 * 1000 } });
+// ZMIANA: Sprawdzamy, czy DATABASE_URI istnieje, zanim połączymy się z bazą.
+let database;
+if (DATABASE_URI) {
+  database = new Sequelize(DATABASE_URI, { logging: false, pool: { max: 30, min: 5, idle: 20 * 60 * 1000 } });
+} else {
+  console.warn('DATABASE_URI is not set. Database features will be disabled.');
+}
 
-const Torrent = database.define('torrent',
+const Torrent = database ? database.define('torrent',
     {
       infoHash: { type: Sequelize.STRING(64), primaryKey: true },
       provider: { type: Sequelize.STRING(32), allowNull: false },
@@ -19,9 +25,9 @@ const Torrent = database.define('torrent',
       languages: { type: Sequelize.STRING(4096) },
       resolution: { type: Sequelize.STRING(16) }
     }
-);
+) : null;
 
-const File = database.define('file',
+const File = database ? database.define('file',
     {
       id: { type: Sequelize.BIGINT, autoIncrement: true, primaryKey: true },
       infoHash: {
@@ -39,93 +45,39 @@ const File = database.define('file',
       kitsuId: { type: Sequelize.INTEGER },
       kitsuEpisode: { type: Sequelize.INTEGER }
     },
-);
+) : null;
 
-const Subtitle = database.define('subtitle',
-    {
-      infoHash: {
-        type: Sequelize.STRING(64),
-        allowNull: false,
-        references: { model: Torrent, key: 'infoHash' },
-        onDelete: 'CASCADE'
-      },
-      fileIndex: { type: Sequelize.INTEGER, allowNull: false },
-      fileId: {
-        type: Sequelize.BIGINT,
-        allowNull: true,
-        references: { model: File, key: 'id' },
-        onDelete: 'SET NULL'
-      },
-      title: { type: Sequelize.STRING(512), allowNull: false },
-      size: { type: Sequelize.BIGINT, allowNull: false },
-    },
-    { timestamps: false }
-);
+// ZMIANA: Sprawdzamy, czy modele istnieją, zanim zdefiniujemy relacje.
+if (Torrent && File) {
+    Torrent.hasMany(File, { foreignKey: 'infoHash', constraints: false });
+    File.belongsTo(Torrent, { foreignKey: 'infoHash', constraints: false });
+}
 
-Torrent.hasMany(File, { foreignKey: 'infoHash', constraints: false });
-File.belongsTo(Torrent, { foreignKey: 'infoHash', constraints: false });
-File.hasMany(Subtitle, { foreignKey: 'fileId', constraints: false });
-Subtitle.belongsTo(File, { foreignKey: 'fileId', constraints: false });
-
+// ZMIANA: Zwracamy puste obietnice, jeśli baza danych nie jest dostępna.
 export function getTorrent(infoHash) {
+  if (!Torrent) return Promise.resolve(null);
   return Torrent.findOne({ where: { infoHash: infoHash } });
 }
 
 export function getFiles(infoHashes) {
+  if (!File) return Promise.resolve([]);
   return File.findAll({ where: { infoHash: { [Op.in]: infoHashes} } });
 }
 
+// Poniższe funkcje nie są używane w nowej logice, ale zostawiamy je puste,
+// aby uniknąć błędów w innych częściach dodatku.
 export function getImdbIdMovieEntries(imdbId) {
-  return File.findAll({
-    where: {
-      imdbId: { [Op.eq]: imdbId }
-    },
-    include: [Torrent],
-    limit: 500,
-    order: [
-      [Torrent, 'seeders', 'DESC']
-    ]
-  });
+  return Promise.resolve([]);
 }
 
 export function getImdbIdSeriesEntries(imdbId, season, episode) {
-  return File.findAll({
-    where: {
-      imdbId: { [Op.eq]: imdbId },
-      imdbSeason: { [Op.eq]: season },
-      imdbEpisode: { [Op.eq]: episode }
-    },
-    include: [Torrent],
-    limit: 500,
-    order: [
-      [Torrent, 'seeders', 'DESC']
-    ]
-  });
+  return Promise.resolve([]);
 }
 
 export function getKitsuIdMovieEntries(kitsuId) {
-  return File.findAll({
-    where: {
-      kitsuId: { [Op.eq]: kitsuId }
-    },
-    include: [Torrent],
-    limit: 500,
-    order: [
-      [Torrent, 'seeders', 'DESC']
-    ]
-  });
+  return Promise.resolve([]);
 }
 
 export function getKitsuIdSeriesEntries(kitsuId, episode) {
-  return File.findAll({
-    where: {
-      kitsuId: { [Op.eq]: kitsuId },
-      kitsuEpisode: { [Op.eq]: episode }
-    },
-    include: [Torrent],
-    limit: 500,
-    order: [
-      [Torrent, 'seeders', 'DESC']
-    ]
-  });
+  return Promise.resolve([]);
 }
