@@ -192,12 +192,8 @@ import { MochOptions } from '../moch/moch.js';
 import { PreConfigurations } from './configuration.js';
 
 export default function landingTemplate(manifest, config = {}) {
-  const providers = config[Providers.key] || Providers.options.map(provider => provider.key);
   const sort = config[SortOptions.key] || SortOptions.options.qualitySeeders.key;
-  const languages = config[LanguageOptions.key] || [];
   const qualityFilters = config[QualityFilter.key] || [];
-  const sizeFilter = (config[SizeFilter.key] || []).join(',');
-  const limit = config.limit || '';
 
   const debridProvider = Object.keys(MochOptions).find(mochKey => config[mochKey]);
   const debridOptions = config[DebridOptions.key] || [];
@@ -214,14 +210,8 @@ export default function landingTemplate(manifest, config = {}) {
 
   const background = manifest.background || 'https://dl.strem.io/addon-background.jpg';
   const logo = manifest.logo || 'https://dl.strem.io/addon-logo.png';
-  const providersHTML = Providers.options
-      .map(provider => `<option value="${provider.key}">${provider.foreign ? provider.foreign + ' ' : ''}${provider.label}</option>`)
-      .join('\n');
   const sortOptionsHTML = Object.values(SortOptions.options)
       .map((option, i) => `<option value="${option.key}" ${i === 0 ? 'selected' : ''}>${option.description}</option>`)
-      .join('\n');
-  const languagesOptionsHTML = LanguageOptions.options
-      .map((option, i) => `<option value="${option.key}">${option.label}</option>`)
       .join('\n');
   const qualityFiltersHTML = Object.values(QualityFilter.options)
       .map(option => `<option value="${option.key}">${option.label}</option>`)
@@ -274,32 +264,15 @@ export default function landingTemplate(manifest, config = {}) {
 
          <div class="separator"></div>
          
-         <label class="label" for="iProviders">Providers:</label>
-         <select id="iProviders" class="input" onchange="generateInstallLink()" name="providers[]" multiple="multiple">
-            ${providersHTML}
-         </select>
-         
          <label class="label" for="iSort">Sorting:</label>
          <select id="iSort" class="input" onchange="sortModeChange()">
            ${sortOptionsHTML}
-         </select>
-         
-         <label class="label" for="iLanguages">Priority foreign language:</label>
-         <select id="iLanguages" class="input" onchange="generateInstallLink()" name="languages[]" multiple="multiple" title="Streams with the selected dubs/subs language will be shown on the top">
-           ${languagesOptionsHTML}
          </select>
          
          <label class="label" for="iQualityFilter">Exclude qualities/resolutions:</label>
          <select id="iQualityFilter" class="input" onchange="generateInstallLink()" name="qualityFilters[]" multiple="multiple">
             ${qualityFiltersHTML}
          </select>
-         
-         <label class="label" id="iLimitLabel" for="iLimit">Max results per quality:</label>
-         <input type="text" inputmode="numeric" pattern="[0-9]*" id="iLimit" onchange="generateInstallLink()" class="input" placeholder="All results">
-         
-         <label class="label" id="iSizeFilterLabel" for="iSizeFilter">Video size limit:</label>
-         <input type="text" pattern="([0-9.]*(?:MB|GB),?)+" id="iSizeFilter" onchange="generateInstallLink()" class="input" placeholder="No limit" title="Returned videos cannot exceed this size, use comma to have different size for movies and series. Examples: 5GB ; 800MB ; 10GB,2GB">
-         
          
          <label class="label" for="iDebridProviders">Debrid provider:</label>
          <select id="iDebridProviders" class="input" onchange="debridProvidersChange()">
@@ -372,18 +345,6 @@ export default function landingTemplate(manifest, config = {}) {
               const isTvAgent = /\\b(?:tv|wv)\\b/i.test(navigator.userAgent)
               const isDesktopMedia = window.matchMedia("(pointer:fine)").matches;
               if (isDesktopMedia && !isTvMedia && !isTvAgent) {
-                $('#iProviders').multiselect({ 
-                    nonSelectedText: 'All providers',
-                    buttonTextAlignment: 'left',
-                    onChange: () => generateInstallLink()
-                });
-                $('#iProviders').multiselect('select', [${providers.map(provider => '"' + provider + '"')}]);
-                $('#iLanguages').multiselect({ 
-                    nonSelectedText: 'None',
-                    buttonTextAlignment: 'left',
-                    onChange: () => generateInstallLink()
-                });
-                $('#iLanguages').multiselect('select', [${languages.map(language => '"' + language + '"')}]);
                 $('#iQualityFilter').multiselect({ 
                     nonSelectedText: 'None',
                     buttonTextAlignment: 'left',
@@ -397,8 +358,6 @@ export default function landingTemplate(manifest, config = {}) {
                 });
                 $('#iDebridOptions').multiselect('select', [${debridOptions.map(option => '"' + option + '"')}]);
               } else {
-                $('#iProviders').val([${providers.map(provider => '"' + provider + '"')}]);
-                $('#iLanguages').val([${languages.map(language => '"' + language + '"')}]);
                 $('#iQualityFilter').val([${qualityFilters.map(filter => '"' + filter + '"')}]);
                 $('#iDebridOptions').val([${debridOptions.map(option => '"' + option + '"')}]);
               }
@@ -413,8 +372,6 @@ export default function landingTemplate(manifest, config = {}) {
               $('#iPutioClientId').val("${putioClientId}");
               $('#iPutioToken').val("${putioToken}");
               $('#iSort').val("${sort}");
-              $('#iLimit').val("${limit}");
-              $('#iSizeFilter').val("${sizeFilter}");
               generateInstallLink();
               debridProvidersChange();
           });
@@ -442,13 +399,8 @@ export default function landingTemplate(manifest, config = {}) {
           }
           
           function generateInstallLink() {
-              const providersList = $('#iProviders').val() || [];
-              const providersValue = providersList.join(',');
               const qualityFilterValue = $('#iQualityFilter').val().join(',') || '';
               const sortValue = $('#iSort').val() || '';
-              const languagesValue = $('#iLanguages').val().join(',') || [];
-              const limitValue = $('#iLimit').val() || '';
-              const sizeFilterValue = $('#iSizeFilter').val() || '';
               
               const debridOptionsValue = $('#iDebridOptions').val().join(',') || '';
               const realDebridValue = $('#iRealDebrid').val() || '';
@@ -461,13 +413,8 @@ export default function landingTemplate(manifest, config = {}) {
               const putioClientIdValue = $('#iPutioClientId').val() || '';
               const putioTokenValue = $('#iPutioToken').val() || '';
               
-              
-              const providers = providersList.length && providersList.length < ${Providers.options.length} && providersValue;
               const qualityFilters = qualityFilterValue.length && qualityFilterValue;
               const sort = sortValue !== '${SortOptions.options.qualitySeeders.key}' && sortValue;
-              const languages = languagesValue.length && languagesValue;
-              const limit = /^[1-9][0-9]{0,2}$/.test(limitValue) && limitValue;
-              const sizeFilter = sizeFilterValue.length && sizeFilterValue;
               
               const debridOptions = debridOptionsValue.length && debridOptionsValue.trim();
               const realDebrid = realDebridValue.length && realDebridValue.trim();
@@ -483,12 +430,8 @@ export default function landingTemplate(manifest, config = {}) {
                 ${preConfigurationObject}
               };
               let configurationValue = [
-                    ['${Providers.key}', providers],
                     ['${SortOptions.key}', sort],
-                    ['${LanguageOptions.key}', languages],
                     ['${QualityFilter.key}', qualityFilters],
-                    ['limit', limit],
-                    ['${SizeFilter.key}', sizeFilter],
                     ['${DebridOptions.key}', debridOptions], 
                     ['${MochOptions.realdebrid.key}', realDebrid],
                     ['${MochOptions.premiumize.key}', premiumize],
@@ -498,7 +441,7 @@ export default function landingTemplate(manifest, config = {}) {
                     ['${MochOptions.offcloud.key}', offcloud],
                     ['${MochOptions.torbox.key}', torbox],
                     ['${MochOptions.putio.key}', putio]
-                  ].filter(([_, value]) => value.length).map(([key, value]) => key + '=' + value).join('|');
+                  ].filter(([_, value]) => value && value.length).map(([key, value]) => key + '=' + value).join('|');
               configurationValue = Object.entries(preConfigurations)
                   .filter(([key, value]) => value === configurationValue)
                   .map(([key, value]) => key)[0] || configurationValue;
